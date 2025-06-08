@@ -16,6 +16,7 @@ from typing import Optional, List
 ### Fin de Imports.
 
 ### Inicio de las excepciones personalizadas.
+
 class ClinicaException(Exception):
     """Excepción base para errores específicos del sistema de la clínica."""
     pass
@@ -39,17 +40,33 @@ class RecetaInvalidaException(ClinicaException):
 class FormatoInvalidoException(ClinicaException):
     """Excepción lanzada cuando un formato de entrada (DNI, fecha, día) es inválido."""
     pass
+
 ### Fin de las excepciones personalizadas.
 
 ### Inicio de la definición de las clases básicas.
+
 class Paciente:  # Representa a un paciente de la clínica.
     ## Atributos Privados.
     def __init__(self, nombre: str, dni: str, fecha_nacimiento: str):
+        if not nombre.strip():
+            raise FormatoInvalidoException("El nombre del paciente no puede estar vacío.")
+        if not self._validar_dni(dni):
+            raise FormatoInvalidoException("El DNI debe contener 8 dígitos numéricos.")
+        try:
+            datetime.strptime(fecha_nacimiento, "%d/%m/%Y")
+        except ValueError:
+            raise FormatoInvalidoException("Formato de fecha de nacimiento inválido. Use dd/mm/aaaa.")
+        
         self.__nombre__ = nombre  # Nombre completo del paciente.
         self.__dni__ = dni  # DNI del paciente (identificador único).
         self.__fecha_nacimiento__ = fecha_nacimiento  # Fecha de nacimiento del paciente en formato dd/mm/aaaa.
 
     ## Métodos.
+    # Validaciones.
+    def _validar_dni(self, dni: str) -> bool:
+        """Valida que el DNI contenga 8 dígitos numéricos."""
+        return dni.isdigit() and len(dni) == 8
+
     # Acceso a Información.
     def obtener_dni(self) -> str:
         """Devuelve el DNI del paciente."""
@@ -63,9 +80,18 @@ class Paciente:  # Representa a un paciente de la clínica.
 
 class Especialidad:  # Representa una especialidad médica junto con los días de atención asociados.
     ## Atributos Privados.
-    def __init__(self, tipo: str, dias: list[str]):
+    DIAS_VALIDOS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+    
+    def __init__(self, tipo: str, dias: List[str]):
+        if not tipo.strip():
+            raise FormatoInvalidoException("El tipo de especialidad no puede estar vacío.")
+        dias_normalizados = [dia.lower() for dia in dias]
+        for dia in dias_normalizados:
+            if dia not in self.DIAS_VALIDOS:
+                raise FormatoInvalidoException(f"Día inválido: {dia}. Días válidos: {', '.join(self.DIAS_VALIDOS)}")
+        
         self.__tipo__ = tipo  # Nombre de la especialidad (por ejemplo, "Pediatría", "Cardiología").
-        self.__dias__ = [dia.lower() for dia in dias]  # Lista de días en los que se atiende esta especialidad, en minúsculas. | Uso lower() para que los días estén en minúsculas.
+        self.__dias__ = dias_normalizados  # Lista de días en los que se atiende esta especialidad, en minúsculas.
 
     ## Métodos.
     # Acceso a Información.
@@ -88,6 +114,11 @@ class Especialidad:  # Representa una especialidad médica junto con los días d
 class Medico:  # Representa a un médico del sistema, con sus especialidades y matrícula profesional.
     ## Atributos Privados.
     def __init__(self, nombre: str, matricula: str):
+        if not nombre.strip():
+            raise FormatoInvalidoException("El nombre del médico no puede estar vacío.")
+        if not matricula.strip():
+            raise FormatoInvalidoException("La matrícula del médico no puede estar vacía.")
+        
         self.__nombre__ = nombre  # Nombre completo del médico.
         self.__matricula__ = matricula  # Matrícula profesional del médico (clave única).
         self.__especialidades__ = []  # Lista de especialidades con sus días de atención.
@@ -96,6 +127,8 @@ class Medico:  # Representa a un médico del sistema, con sus especialidades y m
     # Registro de Datos.
     def agregar_especialidad(self, especialidad: Especialidad):
         """Agrega una especialidad a la lista del médico."""
+        if especialidad.obtener_especialidad() in [e.obtener_especialidad() for e in self.__especialidades__]:
+            raise FormatoInvalidoException(f"La especialidad {especialidad.obtener_especialidad()} ya está registrada.")
         self.__especialidades__.append(especialidad)
 
     # Acceso a Información.
@@ -120,6 +153,8 @@ class Medico:  # Representa a un médico del sistema, con sus especialidades y m
 class Turno:  # Representa un turno médico entre un paciente y un médico para una especialidad específica en una fecha y hora determinada.
     ## Atributos Privados.
     def __init__(self, paciente: Paciente, medico: Medico, fecha_hora: datetime, especialidad: str):
+        if not especialidad.strip():
+            raise FormatoInvalidoException("La especialidad no puede estar vacía.")
         self.__paciente__ = paciente  # Paciente que asiste al turno.
         self.__medico__ = medico  # Médico asignado al turno.
         self.__fecha_hora__ = fecha_hora  # Fecha y hora del turno.
@@ -150,10 +185,12 @@ class Turno:  # Representa un turno médico entre un paciente y un médico para 
 
 class Receta:  # Representa una receta médica emitida por un médico a un paciente, incluyendo los medicamentos recetados y la fecha de emisión.
     ## Atributos Privados.
-    def __init__(self, paciente: Paciente, medico: Medico, medicamentos: list[str]):
+    def __init__(self, paciente: Paciente, medico: Medico, medicamentos: List[str]):
+        if not medicamentos or any(not med.strip() for med in medicamentos):
+            raise RecetaInvalidaException("La lista de medicamentos no puede estar vacía o contener entradas inválidas.")
         self.__paciente__ = paciente  # Paciente al que se le emite la receta.
         self.__medico__ = medico  # Médico que emite la receta.
-        self.__medicamentos__ = medicamentos  # Lista de medicamentos recetados.
+        self.__medicamentos__ = [med.strip() for med in medicamentos]  # Lista de medicamentos recetados.
         self.__fecha = datetime.now()  # Fecha de emisión de la receta. | Asignada automáticamente con datetime.now().
 
     ## Métodos.
@@ -221,12 +258,17 @@ class Clinica:
     def agregar_paciente(self, paciente: Paciente):
         """Registra un paciente y crea su historia clínica."""
         dni = paciente.obtener_dni()
+        if dni in self.__pacientes__:
+            raise FormatoInvalidoException(f"El paciente con DNI {dni} ya está registrado.")
         self.__pacientes__[dni] = paciente
         self.__historias_clinicas__[dni] = HistoriaClinica(paciente)
 
     def agregar_medico(self, medico: Medico):
         """Registra un médico."""
-        self.__medicos__[medico.obtener_matricula()] = medico
+        matricula = medico.obtener_matricula()
+        if matricula in self.__medicos__:
+            raise FormatoInvalidoException(f"El médico con matrícula {matricula} ya está registrado.")
+        self.__medicos__[matricula] = medico
 
     def obtener_pacientes(self) -> List[Paciente]:
         """Devuelve todos los pacientes registrados."""
@@ -244,6 +286,8 @@ class Clinica:
     # Turnos
     def agendar_turno(self, dni: str, matricula: str, especialidad: str, fecha_hora: datetime):
         """Agenda un turno si se cumplen todas las condiciones."""
+        if fecha_hora < datetime.now():
+            raise FormatoInvalidoException("No se pueden agendar turnos en fechas pasadas.")
         self.validar_existencia_paciente(dni)
         self.validar_existencia_medico(matricula)
         self.validar_turno_no_duplicado(matricula, fecha_hora)
@@ -311,6 +355,7 @@ class Clinica:
             raise MedicoNoDisponibleException(f"El médico no atiende en {dia_semana}.")
         if especialidad_en_dia != especialidad_solicitada:
             raise MedicoNoDisponibleException(f"El médico no atiende la especialidad '{especialidad_solicitada}' en {dia_semana}.")
+
 ### Fin de la definición de las clases básicas.
 
 #### Fin del código.
