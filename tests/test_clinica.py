@@ -37,7 +37,7 @@ class TestClinica(unittest.TestCase):
         """Configuración inicial para cada prueba."""
         self.clinica = Clinica()
         self.paciente = Paciente("Juan Perez", "12345678", "01/01/1990")
-        self.medico = Medico("Dr. Ana Lopez", "M123")
+        self.medico = Medico("Dr Ana Lopez", "M123")
         self.especialidad = Especialidad("Cardiología", ["lunes", "miércoles"])
         self.fecha_futura = datetime.now() + timedelta(days=1)
         self.fecha_futura = self.fecha_futura.replace(hour=10, minute=0, second=0, microsecond=0)
@@ -60,6 +60,8 @@ class TestClinica(unittest.TestCase):
         """Verifica que se lancen errores por datos inválidos."""
         with self.assertRaises(FormatoInvalidoException):
             Paciente("", "12345678", "01/01/1990")  # Nombre vacío
+        with self.assertRaises(FormatoInvalidoException):
+            Paciente("Juan123", "12345678", "01/01/1990")  # Nombre inválido
         with self.assertRaises(FormatoInvalidoException):
             Paciente("Juan Perez", "123", "01/01/1990")  # DNI inválido
         with self.assertRaises(FormatoInvalidoException):
@@ -84,7 +86,9 @@ class TestClinica(unittest.TestCase):
         with self.assertRaises(FormatoInvalidoException):
             Medico("", "M123")  # Nombre vacío
         with self.assertRaises(FormatoInvalidoException):
-            Medico("Dr. Ana Lopez", "")  # Matrícula vacía
+            Medico("Ana123", "M123")  # Nombre inválido
+        with self.assertRaises(FormatoInvalidoException):
+            Medico("Dr Ana Lopez", "")  # Matrícula vacía
 
     # Pruebas para Especialidad
     def test_agregar_especialidad_exitoso(self):
@@ -161,6 +165,24 @@ class TestClinica(unittest.TestCase):
         with self.assertRaises(MedicoNoDisponibleException):
             self.clinica.agendar_turno("12345678", "M123", "Cardiología", fecha_martes)
 
+    def test_turno_hora_no_laboral(self):
+        """Verifica que se lance error por turno fuera de horario laboral."""
+        self.clinica.agregar_paciente(self.paciente)
+        self.clinica.agregar_medico(self.medico)
+        self.medico.agregar_especialidad(self.especialidad)
+        fecha_no_laboral = self.fecha_futura.replace(hour=23)
+        with self.assertRaises(FormatoInvalidoException):
+            self.clinica.agendar_turno("12345678", "M123", "Cardiología", fecha_no_laboral)
+
+    def test_turno_fecha_pasada(self):
+        """Verifica que se lance error por turno en fecha pasada."""
+        self.clinica.agregar_paciente(self.paciente)
+        self.clinica.agregar_medico(self.medico)
+        self.medico.agregar_especialidad(self.especialidad)
+        fecha_pasada = datetime.now() - timedelta(days=1)
+        with self.assertRaises(FormatoInvalidoException):
+            self.clinica.agendar_turno("12345678", "M123", "Cardiología", fecha_pasada)
+
     # Pruebas para Receta
     def test_emitir_receta_exitoso(self):
         """Verifica que se pueda emitir una receta válida."""
@@ -170,7 +192,7 @@ class TestClinica(unittest.TestCase):
         historia = self.clinica.obtener_historia_clinica("12345678")
         recetas = historia.obtener_recetas()
         self.assertEqual(len(recetas), 1)
-        self.assertIn("Ibuprofeno", recetas[0].__str__())
+        self.assertIn("Ibuprofeno, Paracetamol", str(recetas[0]))  # Ajustado para nuevo formato de __str__
 
     def test_receta_paciente_no_existe(self):
         """Verifica que se lance error si el paciente no existe."""
@@ -189,7 +211,14 @@ class TestClinica(unittest.TestCase):
         with self.assertRaises(RecetaInvalidaException):
             Receta(self.paciente, self.medico, [])
 
-    # Pruebas para Historia Clínica
+    def test_receta_medicamento_invalido(self):
+        """Verifica que se lance error por medicamentos con caracteres no permitidos."""
+        self.clinica.agregar_paciente(self.paciente)
+        self.clinica.agregar_medico(self.medico)
+        with self.assertRaises(RecetaInvalidaException):
+            self.clinica.emitir_receta("12345678", "M123", ["Ibuprofeno!", "Paracetamol"])
+
+    # Pruebas para Historia clínica
     def test_historia_clinica_registro_correcto(self):
         """Verifica que turnos y recetas se guarden en la historia clínica."""
         self.clinica.agregar_paciente(self.paciente)
@@ -200,10 +229,25 @@ class TestClinica(unittest.TestCase):
         historia = self.clinica.obtener_historia_clinica("12345678")
         self.assertEqual(len(historia.obtener_turnos()), 1)
         self.assertEqual(len(historia.obtener_recetas()), 1)
+        self.assertIn("Cardiología", str(historia))
+        self.assertIn("Ibuprofeno", str(historia))
+
+    def test_flujo_completo(self):
+        """Verifica un flujo completo: paciente, médico, especialidad, turno, receta, historia clínica."""
+        self.clinica.agregar_paciente(self.paciente)
+        self.clinica.agregar_medico(self.medico)
+        self.medico.agregar_especialidad(self.especialidad)
+        self.clinica.agendar_turno("12345678", "M123", "Cardiología", self.fecha_futura)
+        self.clinica.emitir_receta("12345678", "M123", ["Ibuprofeno"])
+        historia = self.clinica.obtener_historia_clinica("12345678")
+        self.assertEqual(len(historia.obtener_turnos()), 1)
+        self.assertEqual(len(historia.obtener_recetas()), 1)
+        self.assertIn("Cardiología", str(historia))
+        self.assertIn("Ibuprofeno", str(historia))
+    
+## Inicio de la definición de la clase TestClinica para las pruebas unitarias.
 
 if __name__ == "__main__":
     unittest.main()
-    
-## Inicio de la definición de la clase TestClinica para las pruebas unitarias.
 
 ### Fin del código

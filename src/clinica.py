@@ -11,12 +11,14 @@ Ruta: "computaci-n-2025-05-27-gesti-n-cl-nica-EnzoAguirre04/src/clinica.py".
 ### Inicio de Imports.
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Dict, List, Optional
 
-from src.modelo.excepciones import PacienteNoEncontradoException
-from src.modelo.excepciones import MedicoNoDisponibleException
-from src.modelo.excepciones import TurnoOcupadoException
-from src.modelo.excepciones import FormatoInvalidoException
+from src.modelo.excepciones import (
+    FormatoInvalidoException,
+    MedicoNoDisponibleException,
+    PacienteNoEncontradoException,
+    TurnoOcupadoException,
+)
 from src.modelo.historiaclinica import HistoriaClinica
 from src.modelo.medico import Medico
 from src.modelo.paciente import Paciente
@@ -25,20 +27,20 @@ from src.modelo.turno import Turno
 
 ### Fin de Imports.
 
-### Inicio de la definición de la clase principal Clinica.
+### Inicio de la definición de la clase Clinica.
 
-class Clinica:
-    ## Atributos Privados
+class Clinica:  # Clase principal que gestiona pacientes, médicos, turnos y recetas.
+    ## Atributos Privados.
     def __init__(self):
-        self.__pacientes__ = {}  # Mapea DNI del paciente a su objeto correspondiente.
-        self.__medicos__ = {}  # Mapea matrícula de médico a su objeto correspondiente.
-        self.__turnos__ = []  # Lista de todos los turnos agendados.
-        self.__historias_clinicas__ = {}  # Mapea DNI a su historia clínica.
+        self.__pacientes__: Dict[str, Paciente] = {}  # Diccionario de pacientes (DNI -> Paciente).
+        self.__medicos__: Dict[str, Medico] = {}  # Diccionario de médicos (Matrícula -> Médico).
+        self.__turnos__: List[Turno] = []  # Lista de turnos agendados.
+        self.__historias_clinicas__: Dict[str, HistoriaClinica] = {}  # Diccionario de historias clínicas (DNI -> HistoriaClinica).
 
-    ## Métodos
-    # Registro y Acceso
+    ## Métodos.
+    # Registro de Pacientes y Médicos.
     def agregar_paciente(self, paciente: Paciente):
-        """Registra un paciente y crea su historia clínica."""
+        """Registra un nuevo paciente en la clínica."""
         dni = paciente.obtener_dni()
         if dni in self.__pacientes__:
             raise FormatoInvalidoException(f"El paciente con DNI {dni} ya está registrado.")
@@ -46,98 +48,80 @@ class Clinica:
         self.__historias_clinicas__[dni] = HistoriaClinica(paciente)
 
     def agregar_medico(self, medico: Medico):
-        """Registra un médico."""
+        """Registra un nuevo médico en la clínica."""
         matricula = medico.obtener_matricula()
         if matricula in self.__medicos__:
             raise FormatoInvalidoException(f"El médico con matrícula {matricula} ya está registrado.")
         self.__medicos__[matricula] = medico
 
-    def obtener_pacientes(self) -> List[Paciente]:
-        """Devuelve todos los pacientes registrados."""
-        return list(self.__pacientes__.values())
-
-    def obtener_medicos(self) -> List[Medico]:
-        """Devuelve todos los médicos registrados."""
-        return list(self.__medicos__.values())
-
-    def obtener_medico_por_matricula(self, matricula: str) -> Medico:
-        """Devuelve un médico por su matrícula."""
-        self.validar_existencia_medico(matricula)
-        return self.__medicos__[matricula]
-
-    # Turnos
+    # Gestión de Turnos.
     def agendar_turno(self, dni: str, matricula: str, especialidad: str, fecha_hora: datetime):
-        """Agenda un turno si se cumplen todas las condiciones."""
+        """Agenda un turno para un paciente con un médico en una fecha específica."""
         if fecha_hora < datetime.now():
             raise FormatoInvalidoException("No se pueden agendar turnos en fechas pasadas.")
-        self.validar_existencia_paciente(dni)
-        self.validar_existencia_medico(matricula)
-        self.validar_turno_no_duplicado(matricula, fecha_hora)
-
-        medico = self.__medicos__[matricula]
-        dia_semana = self.obtener_dia_semana_en_espanol(fecha_hora)
-        self.validar_especialidad_en_dia(medico, especialidad, dia_semana)
-
-        paciente = self.__pacientes__[dni]
+        if fecha_hora.hour < 8 or fecha_hora.hour >= 20:
+            raise FormatoInvalidoException("Los turnos deben agendarse entre las 8:00 y las 20:00.")
+        paciente = self.obtener_paciente_por_dni(dni)
+        medico = self.obtener_medico_por_matricula(matricula)
+        # Mapear días de la semana de inglés a español
+        dias_ingles_a_espanol = {
+            "monday": "lunes",
+            "tuesday": "martes",
+            "wednesday": "miércoles",
+            "thursday": "jueves",
+            "friday": "viernes",
+            "saturday": "sábado",
+            "sunday": "domingo"
+        }
+        dia_semana = dias_ingles_a_espanol.get(fecha_hora.strftime("%A").lower(), fecha_hora.strftime("%A").lower())
+        if medico.obtener_especialidad_para_dia(dia_semana) != especialidad:
+            raise MedicoNoDisponibleException(f"El médico no atiende {especialidad} los días {dia_semana}.")
+        for turno in self.__turnos__:
+            if turno.obtener_medico().obtener_matricula() == matricula and turno.obtener_fecha_hora() == fecha_hora:
+                raise TurnoOcupadoException("El médico ya tiene un turno asignado en esa fecha y hora.")
         turno = Turno(paciente, medico, fecha_hora, especialidad)
-
         self.__turnos__.append(turno)
         self.__historias_clinicas__[dni].agregar_turno(turno)
 
-    def obtener_turnos(self) -> List[Turno]:
-        """Devuelve todos los turnos agendados."""
-        return self.__turnos__.copy()
-
-    # Recetas e Historias Clínicas
+    # Gestión de Recetas.
     def emitir_receta(self, dni: str, matricula: str, medicamentos: List[str]):
-        """Emite una receta para un paciente."""
-        self.validar_existencia_paciente(dni)
-        self.validar_existencia_medico(matricula)
-
-        paciente = self.__pacientes__[dni]
-        medico = self.__medicos__[matricula]
+        """Emite una receta médica para un paciente."""
+        paciente = self.obtener_paciente_por_dni(dni)
+        medico = self.obtener_medico_por_matricula(matricula)
         receta = Receta(paciente, medico, medicamentos)
         self.__historias_clinicas__[dni].agregar_receta(receta)
 
+    # Acceso a Información.
+    def obtener_paciente_por_dni(self, dni: str) -> Paciente:
+        """Devuelve un paciente dado su DNI."""
+        if dni not in self.__pacientes__:
+            raise PacienteNoEncontradoException(f"No se encontró un paciente con DNI {dni}.")
+        return self.__pacientes__[dni]
+
+    def obtener_medico_por_matricula(self, matricula: str) -> Medico:
+        """Devuelve un médico dada su matrícula."""
+        if matricula not in self.__medicos__:
+            raise MedicoNoDisponibleException(f"No se encontró un médico con matrícula {matricula}.")
+        return self.__medicos__[matricula]
+
     def obtener_historia_clinica(self, dni: str) -> HistoriaClinica:
-        """Devuelve la historia clínica completa de un paciente."""
-        self.validar_existencia_paciente(dni)
+        """Devuelve la historia clínica de un paciente."""
+        if dni not in self.__historias_clinicas__:
+            raise PacienteNoEncontradoException(f"No se encontró una historia clínica para el DNI {dni}.")
         return self.__historias_clinicas__[dni]
 
-    # Validaciones y Utilidades
-    def validar_existencia_paciente(self, dni: str):
-        """Verifica si un paciente está registrado."""
-        if dni not in self.__pacientes__:
-            raise PacienteNoEncontradoException(f"No se encontró el paciente con DNI: {dni}")
+    def obtener_turnos(self) -> List[Turno]:
+        """Devuelve una copia de la lista de turnos."""
+        return self.__turnos__.copy()
 
-    def validar_existencia_medico(self, matricula: str):
-        """Verifica si un médico está registrado."""
-        if matricula not in self.__medicos__:
-            raise MedicoNoDisponibleException(f"No se encontró el médico con matrícula: {matricula}")
+    def obtener_pacientes(self) -> List[Paciente]:
+        """Devuelve una copia de la lista de pacientes."""
+        return list(self.__pacientes__.values())
 
-    def validar_turno_no_duplicado(self, matricula: str, fecha_hora: datetime):
-        """Verifica que no haya un turno duplicado."""
-        for turno in self.__turnos__:
-            if turno.obtener_medico().obtener_matricula() == matricula and turno.obtener_fecha_hora() == fecha_hora:
-                raise TurnoOcupadoException("Ya existe un turno para ese médico en la fecha y hora indicadas.")
+    def obtener_medicos(self) -> List[Medico]:
+        """Devuelve una copia de la lista de médicos."""
+        return list(self.__medicos__.values())
 
-    def obtener_dia_semana_en_espanol(self, fecha_hora: datetime) -> str:
-        """Traduce un objeto datetime al día de la semana en español."""
-        dias = {0: "lunes", 1: "martes", 2: "miércoles", 3: "jueves", 4: "viernes", 5: "sábado", 6: "domingo"}
-        return dias[fecha_hora.weekday()]
-
-    def obtener_especialidad_disponible(self, medico: Medico, dia_semana: str) -> Optional[str]:
-        """Obtiene la especialidad disponible para un médico en un día."""
-        return medico.obtener_especialidad_para_dia(dia_semana)
-
-    def validar_especialidad_en_dia(self, medico: Medico, especialidad_solicitada: str, dia_semana: str):
-        """Verifica que el médico atienda esa especialidad ese día."""
-        especialidad_en_dia = self.obtener_especialidad_disponible(medico, dia_semana)
-        if especialidad_en_dia is None:
-            raise MedicoNoDisponibleException(f"El médico no atiende en {dia_semana}.")
-        if especialidad_en_dia != especialidad_solicitada:
-            raise MedicoNoDisponibleException(f"El médico no atiende la especialidad '{especialidad_solicitada}' en {dia_semana}.")
-
-### Fin de la definición de la clase principal Clinica.
+### Fin de la definición de la clase Clinica.
 
 #### Fin del código.

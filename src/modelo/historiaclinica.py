@@ -49,12 +49,12 @@ class HistoriaClinica:  # Clase que almacena la información médica de un pacie
     # Representación.
     def __str__(self) -> str:
         """Devuelve una representación textual de la historia clínica, incluyendo turnos y recetas."""
-        turnos_str = "\n".join(str(t) for t in self.__turnos__) if self.__turnos__ else "  Sin turnos registrados"
-        recetas_str = "\n".join(str(r) for r in self.__recetas__) if self.__recetas__ else "  Sin recetas registradas"
+        turnos_str = "\n".join([f"  - {t}" for t in self.__turnos__]) if self.__turnos__ else "  Sin turnos registrados"
+        recetas_str = "\n".join([f"  - {r}" for r in self.__recetas__]) if self.__recetas__ else "  Sin recetas registradas"
         return (
-            f"Historia Clínica de {self.__paciente__}\n\n"
-            f"Turnos:\n{turnos_str}\n\n"
-            f"Recetas:\n{recetas_str}"
+            f"Historia Clínica de {self.__paciente__.__nombre__} (DNI: {self.__paciente__.obtener_dni()})\n"
+            f"\nTurnos:\n{turnos_str}\n"
+            f"\nRecetas:\n{recetas_str}"
         )
 
 ### Fin de la definición de la clase HistoriaClinica.

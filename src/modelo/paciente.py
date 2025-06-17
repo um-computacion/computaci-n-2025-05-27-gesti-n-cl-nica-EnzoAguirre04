@@ -18,28 +18,24 @@ from src.modelo.excepciones import FormatoInvalidoException
 
 ### Inicio de la definición de la clase Paciente.
 
-class Paciente:  # Representa a un paciente de la clínica.
+class Paciente:  # Representa a un paciente de la clínica, con sus datos personales.
     ## Atributos Privados.
     def __init__(self, nombre: str, dni: str, fecha_nacimiento: str):
         if not nombre.strip():
             raise FormatoInvalidoException("El nombre del paciente no puede estar vacío.")
-        if not self._validar_dni(dni):
-            raise FormatoInvalidoException("El DNI debe contener 8 dígitos numéricos.")
+        if not all(c.isalpha() or c.isspace() for c in nombre.strip()):
+            raise FormatoInvalidoException("El nombre solo puede contener letras y espacios.")
+        if not dni.strip() or not dni.isdigit() or len(dni) != 8:
+            raise FormatoInvalidoException("El DNI debe ser un número de 8 dígitos.")
         try:
             datetime.strptime(fecha_nacimiento, "%d/%m/%Y")
         except ValueError:
-            raise FormatoInvalidoException("Formato de fecha de nacimiento inválido. Use dd/mm/aaaa.")
-        
-        self.__nombre__ = nombre  # Nombre completo del paciente.
-        self.__dni__ = dni  # DNI del paciente (identificador único).
-        self.__fecha_nacimiento__ = fecha_nacimiento  # Fecha de nacimiento del paciente en formato dd/mm/aaaa.
+            raise FormatoInvalidoException("La fecha de nacimiento debe estar en formato dd/mm/aaaa.")
+        self.__nombre__ = nombre.strip()  # Nombre completo del paciente.
+        self.__dni__ = dni.strip()  # DNI del paciente.
+        self.__fecha_nacimiento__ = fecha_nacimiento  # Fecha de nacimiento en formato "dd/mm/aaaa".
 
     ## Métodos.
-    # Validaciones.
-    def _validar_dni(self, dni: str) -> bool:
-        """Valida que el DNI contenga 8 dígitos numéricos."""
-        return dni.isdigit() and len(dni) == 8
-
     # Acceso a Información.
     def obtener_dni(self) -> str:
         """Devuelve el DNI del paciente."""
@@ -47,7 +43,7 @@ class Paciente:  # Representa a un paciente de la clínica.
 
     # Representación.
     def __str__(self) -> str:
-        """Representación en texto del paciente."""
+        """Devuelve una representación en cadena del paciente."""
         return f"Paciente: {self.__nombre__}, DNI: {self.__dni__}, Fecha de nacimiento: {self.__fecha_nacimiento__}"
 
 ### Fin de la definición de la clase Paciente.

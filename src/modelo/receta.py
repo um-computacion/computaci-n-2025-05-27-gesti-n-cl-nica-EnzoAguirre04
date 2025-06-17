@@ -27,8 +27,8 @@ class Receta:  # Representa una receta médica emitida por un médico a un pacie
         if not medicamentos or any(not med.strip() for med in medicamentos):
             raise RecetaInvalidaException("La lista de medicamentos no puede estar vacía o contener entradas inválidas.")
         for med in medicamentos:
-            if not all(c.isalnum() or c.isspace() for c in med.strip()):
-                raise RecetaInvalidaException(f"Medicamento inválido: {med}. Solo se permiten letras, números y espacios.")
+            if not all(c.isalnum() or c in " -_" for c in med.strip()):
+                raise RecetaInvalidaException(f"Medicamento inválido: {med}. Solo se permiten letras, números, espacios, guiones y guiones bajos.")
         self.__paciente__ = paciente  # Paciente al que se le emite la receta.
         self.__medico__ = medico  # Médico que emite la receta.
         self.__medicamentos__ = [med.strip() for med in medicamentos]  # Lista de medicamentos recetados.
@@ -41,11 +41,10 @@ class Receta:  # Representa una receta médica emitida por un médico a un pacie
         fecha_str = self.__fecha.strftime("%d/%m/%Y %H:%M")
         medicamentos_str = ", ".join(self.__medicamentos__) or "Sin medicamentos"
         return (
-            f"Receta\n"
-            f"  Fecha: {fecha_str}\n"
-            f"  Paciente: {self.__paciente__.obtener_dni()} - {self.__paciente__}\n"
-            f"  Médico: {self.__medico__.obtener_matricula()} - {self.__medico__}\n"
-            f"  Medicamentos: {medicamentos_str}"
+            f"Fecha: {fecha_str}, "
+            f"Paciente: {self.__paciente__.__nombre__} (DNI: {self.__paciente__.obtener_dni()}), "
+            f"Médico: {self.__medico__.__nombre__} (Matrícula: {self.__medico__.obtener_matricula()}), "
+            f"Medicamentos: {medicamentos_str}"
         )
 
 ### Fin de la definición de la clase Receta.
