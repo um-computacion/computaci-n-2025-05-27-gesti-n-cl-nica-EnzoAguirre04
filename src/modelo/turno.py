@@ -46,8 +46,8 @@ class Turno:  # Representa un turno médico entre un paciente y un médico para 
         fecha_formateada = self.__fecha_hora__.strftime("%d/%m/%Y %H:%M")
         return (
             f"Turno:\n"
-            f"  Paciente: {self.__paciente__.obtener_dni()} - {self.__paciente__}\n"
-            f"  Médico: {self.__medico__.obtener_matricula()} - {self.__medico__}\n"
+            f"  Paciente: {self.__paciente__.obtener_dni()} ({self.__paciente__.__nombre__})\n"
+            f"  Médico: {self.__medico__.obtener_matricula()} ({self.__medico__.__nombre__})\n"
             f"  Especialidad: {self.__especialidad__}\n"
             f"  Fecha y hora: {fecha_formateada}"
         )

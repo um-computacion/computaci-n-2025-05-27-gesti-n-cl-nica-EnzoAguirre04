@@ -26,6 +26,9 @@ class Receta:  # Representa una receta médica emitida por un médico a un pacie
     def __init__(self, paciente: Paciente, medico: Medico, medicamentos: List[str]):
         if not medicamentos or any(not med.strip() for med in medicamentos):
             raise RecetaInvalidaException("La lista de medicamentos no puede estar vacía o contener entradas inválidas.")
+        for med in medicamentos:
+            if not all(c.isalnum() or c.isspace() for c in med.strip()):
+                raise RecetaInvalidaException(f"Medicamento inválido: {med}. Solo se permiten letras, números y espacios.")
         self.__paciente__ = paciente  # Paciente al que se le emite la receta.
         self.__medico__ = medico  # Médico que emite la receta.
         self.__medicamentos__ = [med.strip() for med in medicamentos]  # Lista de medicamentos recetados.
