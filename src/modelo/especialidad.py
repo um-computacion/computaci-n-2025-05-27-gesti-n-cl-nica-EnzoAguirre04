@@ -18,38 +18,32 @@ from src.modelo.excepciones import FormatoInvalidoException
 
 ### Inicio de la definición de la clase Especialidad.
 
-class Especialidad:  # Representa una especialidad médica junto con los días de atención asociados.
+class Especialidad:  # Representa una especialidad médica con su tipo y los días en que se atiende.
     ## Atributos Privados.
-    DIAS_VALIDOS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
-    
     def __init__(self, tipo: str, dias: List[str]):
         if not tipo.strip():
             raise FormatoInvalidoException("El tipo de especialidad no puede estar vacío.")
-        dias_normalizados = [dia.lower() for dia in dias]
-        for dia in dias_normalizados:
-            if dia not in self.DIAS_VALIDOS:
-                raise FormatoInvalidoException(f"Día inválido: {dia}. Días válidos: {', '.join(self.DIAS_VALIDOS)}")
-        
-        self.__tipo__ = tipo  # Nombre de la especialidad (por ejemplo, "Pediatría", "Cardiología").
-        self.__dias__ = dias_normalizados  # Lista de días en los que se atiende esta especialidad, en minúsculas.
+        valid_days = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+        if not dias or any(not dia.strip() or dia.strip().lower() not in valid_days for dia in dias):
+            raise FormatoInvalidoException("Los días deben ser válidos (lunes a domingo).")
+        self.__tipo__ = tipo.strip()  # Nombre de la especialidad (ej. Cardiología).
+        self.__dias__ = [dia.strip().lower() for dia in dias]  # Lista de días de atención.
 
     ## Métodos.
     # Acceso a Información.
-    def obtener_especialidad(self) -> str:
-        """Devuelve el nombre de la especialidad."""
+    def obtener_tipo(self) -> str:
+        """Devuelve el tipo de la especialidad."""
         return self.__tipo__
 
-    # Validaciones.
-    def verificar_dia(self, dia: str) -> bool:
-        """Devuelve True si la especialidad está disponible en el día proporcionado, false en caso contrario."""
-        return dia.lower() in self.__dias__
+    def obtener_dias(self) -> List[str]:
+        """Devuelve una copia de la lista de días de atención."""
+        return self.__dias__.copy()
 
     # Representación.
     def __str__(self) -> str:
-        """Devuelve una cadena legible con el nombre de la especialidad y los días de atención."""
-        dias_str = ", ".join(self.__dias__)
-        return f"{self.__tipo__} (Días: {dias_str})"
-    
+        """Devuelve una representación en cadena de la especialidad."""
+        return f"Especialidad: {self.__tipo__}, Días: {', '.join(self.__dias__)}"
+
 ### Fin de la definición de la clase Especialidad.
 
 #### Fin del código.
