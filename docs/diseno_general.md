@@ -24,6 +24,7 @@ Es importante aclarar que el sistema no guarda datos permanentemente (se reinici
 ```
 computaci-n-2025-05-27-gesti-n-cl-nica-EnzoAguirre04/
 │
+├── main.py                       # Punto de entrada del programa
 ├── src/                          # Código fuente del sistema
 │   ├── __init__.py               # Para indicar que la carpeta es un paquete
 │   ├── modelo/                   # Clases del modelo (datos y validaciones)
@@ -37,14 +38,14 @@ computaci-n-2025-05-27-gesti-n-cl-nica-EnzoAguirre04/
 │   │   └── historiaclinica.py    # Clase HistoriaClinica (paciente, turnos, recetas)
 │   │
 │   ├── clinica.py                # Clase Clinica (controlador, gestiona la lógica)
-│   ├── cli.py                    # Interfaz de línea de comandos (vista)
-│   └── main.py                   # Punto de entrada del programa
+│   └── cli.py                    # Interfaz de línea de comandos (vista)
 │
 ├── tests/                        # Pruebas unitarias
 │   └── __init__.py               # Para indicar que la carpeta es un paquete
 │   └── test_clinica.py           # Pruebas para todas las funcionalidades
 │
 ├── docs/                         # Documentación
+│   ├── captura.png               # Captura de los tests
 │   ├── guia_ejecucion.md         # Instrucciones para ejecutar el sistema y pruebas
 │   └── diseno_general.md         # Diseño general y diagrama de archivos
 │
